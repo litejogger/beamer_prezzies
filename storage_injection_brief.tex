@@ -1,0 +1,370 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+\usetheme{metropolis}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{appendixnumberbeamer}
+\usepackage{amsmath}
+
+% Custom colors
+\definecolor{alertred}{RGB}{204, 36, 29}
+\definecolor{okgreen}{RGB}{40, 140, 40}
+\definecolor{noteblue}{RGB}{30, 90, 160}
+
+\setbeamercolor{alerted text}{fg=alertred}
+
+\graphicspath{{figs/}}
+
+\title{Regional Storage Injection:\\Constraint Mechanics and the Midwest Problem}
+\subtitle{Why Midwest Injects Zero and What Controls It}
+\author{Caleb Sy}
+\date{March 2026}
+\institute{PhD Research Briefing}
+
+\begin{document}
+
+\maketitle
+
+%% ============================================================
+%% PART I: THE OBSERVATION
+%% ============================================================
+
+\section{The Observation}
+
+% ---- Slide 2 ----
+\begin{frame}{East Overinjects; Midwest Injects Nothing}
+  During the 210-day injection season (days~76--285), the v14 Part~3 model shows:
+
+  \vspace{0.5em}
+  \begin{table}
+    \centering
+    \begin{tabular}{lcccc}
+      \toprule
+      \textbf{Region} & \textbf{Actual (mean)} & \textbf{Target (5yr avg)} & \textbf{Ratio} & \textbf{Days at zero} \\
+      \midrule
+      East   & 9.355~bcf/day & 3.443~bcf/day & \textbf{2.77$\times$} & 0 \\
+      \textbf{Midwest} & \alert{$\sim$1e-19~mmbtu} & 2--3.7~bcf/day & \alert{$\approx$0} & \textbf{210/210} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \vspace{0.5em}
+  \begin{itemize}
+    \item East injects \textbf{2.77$\times$ its own target} --- routinely exceeding the 5-year average
+    \item Midwest injects \textbf{machine-epsilon zero on every single day} despite having real capacity
+    \item The model has completely bypassed midwest storage as a dispatch option
+  \end{itemize}
+
+  \vspace{0.3em}
+  \begin{block}{Question}
+    Is this a data error, a model bug, or a structural/economic consequence of how the constraints are set up?
+  \end{block}
+\end{frame}
+
+% ---- Slide 3 ----
+\begin{frame}{The Injection Chain}
+  Total injection flows from a global forcing constraint down to individual node decisions:
+
+  \vspace{0.5em}
+  \begin{center}
+  \small
+  \begin{tabular}{cl}
+    $I_\text{total}[t]$ & historical supply surplus: $\max(0,\;\text{supply} - \text{demand})$ \\[0.2em]
+    $\downarrow$ & \texttt{TotalDailyInjection~==} \quad{\footnotesize (gas\_model\_dev.py line~572)} \\[0.2em]
+    $\displaystyle\sum_r \text{region\_injection}[r,t] = I_\text{total}[t]$ & \\[0.2em]
+    $\downarrow$ & soft target penalty \$0.10/mmbtu \\[0.2em]
+    $\text{Horizon\_region\_inject\_daily\_target}[r,t]$ & 5-yr weekly avg $\div$ 7 \\[0.2em]
+    $\downarrow$ & \texttt{RegionInjectionSum~==} \\[0.2em]
+    $\text{region\_injection}[r,t] = \displaystyle\sum_{n \in r} \text{node\_injection}[n,t]$ & \\[0.2em]
+    $\downarrow$ & \texttt{NodeInjectionPct} \quad \alert{$==$\;(midwest)} \;/\; $\leq$\;(east) \\[0.2em]
+    $\text{node\_injection}[n,t] \;\{==\;\text{or}\;\leq\}\; \text{pct}[n]\cdot\text{region\_injection}[r,t]$ & \\
+  \end{tabular}
+  \end{center}
+
+  \vspace{0.3em}
+  Three layers each impose a different type of control. The problem originates at \textbf{all three}.
+\end{frame}
+
+%% ============================================================
+%% PART II: THREE LAYERS OF CONTROL
+%% ============================================================
+
+\section{Three Layers of Injection Control}
+
+% ---- Slide 4 ----
+\begin{frame}{Layer~1: The Hard Forcing Constraint}
+  \textbf{Constraint} (\texttt{v14\_gas\_model\_dev.py}, line~572):
+  \[
+    \sum_{r} \text{region\_injection}[r,t] \;==\; \underbrace{I_\text{total}[t]}_{\text{fixed parameter}}
+  \]
+
+  \begin{itemize}
+    \item $I_\text{total}[t] = \max(0,\;\text{supply} - \text{demand})$ is computed in data setup and handed to the model as \textbf{read-only data}
+    \item The \texttt{==} means the model \textbf{must inject exactly that much gas, every day, no exceptions}
+    \item It can choose \emph{where} gas goes, but not \emph{whether} or \emph{how much} total to inject
+  \end{itemize}
+
+  \vspace{0.5em}
+  \begin{block}{Consequence}
+    Storage injection is not a dispatch decision --- it is a \textbf{forced allocation problem}.
+    The optimizer asks ``where do I put this gas?'', not ``should I inject today?''
+  \end{block}
+\end{frame}
+
+% ---- Slide 5 ----
+\begin{frame}{Layer~2: The Soft Regional Targets}
+  \textbf{Objective term} (\texttt{v14\_gas\_model\_dev.py}, lines~328, 333):
+  \[
+    \text{penalty\_cost} = \sum_{r,\,t} \underbrace{|\text{region\_injection}[r,t] - \text{target}[r,t]|}_{\texttt{abs\_region\_target\_diff}\;[r,t]}
+    \times \underbrace{\$0.10/\text{mmbtu}}_{\text{per region}}
+  \]
+
+  The absolute value is LP-linearized by two bounding constraints:
+  \[
+    \text{region\_injection} - \text{target} \leq \texttt{abs\_diff} \qquad \text{(overshoot)}
+  \]
+  \[
+    \text{target} - \text{region\_injection} \leq \texttt{abs\_diff} \qquad \text{(undershoot)}
+  \]
+
+  \vspace{0.3em}
+  \begin{alertblock}{Why the penalty is ineffective}
+    At \$0.10/mmbtu, this penalty is \textbf{weaker than a single pipeline hop}.
+    Routing gas to midwest storage nodes requires 2--3 extra hops at \$0.10--0.20/mmbtu each.
+    The model simply \emph{pays the penalty} and injects everything east instead.
+    The soft target functions as a tiebreaker, not a real constraint.
+  \end{alertblock}
+\end{frame}
+
+% ---- Slide 6 ----
+\begin{frame}{Layer~3: Node Proportionality --- the East/Midwest Asymmetry}
+  The critical difference is the type of constraint at the node level:
+
+  \vspace{0.3em}
+  \textbf{East region} (\texttt{<=}, line~609):
+  \[
+    \text{node\_injection}[n,t] \;\leq\; \text{pct}[n] \cdot \text{region\_injection}[\text{east},\,t]
+  \]
+  Each east node can inject \emph{up to} its share. Nodes can inject less. \textbf{Flexible.}
+
+  \vspace{0.5em}
+  \textbf{Midwest region} (\texttt{==}, line~614):
+  \[
+    \text{node\_injection}[n,t] \;==\; \text{pct}[n] \cdot \text{region\_injection}[\text{midwest},\,t]
+  \]
+  Each midwest node must inject \emph{exactly} its proportional share --- simultaneously, every day.
+
+  \vspace{0.3em}
+  \begin{columns}[T]
+    \column{0.45\textwidth}
+      \textbf{Midwest node shares:}\\[0.3em]
+      \small
+      \begin{tabular}{lr}
+        MI & 62.2\% \\
+        IL & 22.2\% \\
+        KY &  6.8\% \\
+        IA &  4.7\% \\
+        IN, MO, MN, TN & 4.1\% \\
+      \end{tabular}
+
+    \column{0.52\textwidth}
+      \begin{alertblock}{Consequence}
+        To get any gas into MI, the model must also route gas to KY, IA, IN, MO, MN, and TN at fixed proportions. This is \textbf{all-or-nothing}.
+      \end{alertblock}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+%% PART III: THE MIDWEST PROBLEM
+%% ============================================================
+
+\section{The Midwest Problem}
+
+% ---- Slide 7 ----
+\begin{frame}{All-or-Nothing: How the Optimizer Decides}
+  On any injection-season day, the model's logic plays out like this:
+
+  \vspace{0.5em}
+  \begin{enumerate}
+    \item Receives the forcing constraint: \textbf{``you must inject $I_\text{total}$ bcf today''}
+    \item Evaluates options:
+      \begin{itemize}
+        \item East: \texttt{<=} node constraint --- can inject at PA, OH, WV selectively
+        \item Midwest: \texttt{==} node constraint --- must commit all 8 nodes at fixed proportions
+      \end{itemize}
+    \item Prices the routes: east storage is relatively cheap (short hops from Appalachian/Gulf supply); midwest requires routing to all 8 nodes simultaneously
+    \item Checks whether the \$0.10/mmbtu midwest penalty exceeds the cost difference
+    \item[\alert{5.}] \alert{\textbf{It does not.}} All of $I_\text{total}$ goes east. Midwest injection = 0.
+  \end{enumerate}
+
+  \vspace{0.3em}
+  \begin{block}{The interaction effect}
+    East's \texttt{<=} constraint makes it a \textbf{residual absorber}: it can take any amount up to its physical cap (PA~43\% + OH~22\% + WV~18\% = 83\% of east max deliverability).
+    East capacity is large enough to absorb the entire national surplus.
+    Midwest never receives overflow.
+  \end{block}
+\end{frame}
+
+% ---- Slide 8 ----
+\begin{frame}{Summary: Constraint Types and Their Consequences}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{p{3.5cm}p{2.2cm}p{4.0cm}p{3.5cm}}
+      \toprule
+      \textbf{Constraint} & \textbf{Type} & \textbf{What it forces} & \textbf{Side effect} \\
+      \midrule
+      \texttt{TotalDailyInjection} & Hard \texttt{==} & Must inject exactly $I_\text{total}$ & No volume choice; only where \\[0.3em]
+      Regional soft target & \$0.10/mmbtu & Nudges toward 5yr-avg allocation & Easily overridden by routing cost \\[0.3em]
+      \texttt{EastRegionInjectionPct} & \texttt{<=} & East nodes up to capacity share & Flexible --- east absorbs any amount \\[0.3em]
+      \texttt{MidwestRegionInjectionPct} & \alert{\texttt{==}} & All 8 nodes at exact fixed shares & \alert{All-or-nothing; optimizer chooses nothing} \\[0.3em]
+      \texttt{MaxInjection} + slack & Soft upper bound & Physical capacity ceiling & Safety valve; rarely binding \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \vspace{0.3em}
+  \textbf{Short version:} The model is forced to inject a fixed daily amount, has a weak preference for where it goes, and faces an east region that is structurally easy to fill versus a midwest region that is structurally all-or-nothing. East absorbs everything. Midwest is permanently bypassed.
+\end{frame}
+
+%% ============================================================
+%% PART IV: WHAT CHANGING TO <= DOES AND DOES NOT ACHIEVE
+%% ============================================================
+
+\section{Two Goals, Two Failure Modes}
+
+% ---- Slide 9 ----
+\begin{frame}{The Two Goals}
+  There are two distinct objectives when thinking about fixing the injection constraints:
+
+  \vspace{0.5em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{Goal 1: Cross-region flexibility}
+        Give the model a real option to store in midwest (or other regions), not just east.
+        \textbf{Problem}: regional allocation is controlled by the soft penalty --- the node-level constraints don't affect this.
+      \end{block}
+
+    \column{0.48\textwidth}
+      \begin{block}{Goal 2: Within-region distribution}
+        Prevent all injection from concentrating in a single cheapest node.
+        \textbf{Problem}: the \texttt{==} constraint on midwest makes this moot (midwest injects zero); the \texttt{<=} on east does help, but selectively.
+      \end{block}
+  \end{columns}
+
+  \vspace{0.5em}
+  These two goals require \textbf{different fixes}. Making the node constraints \texttt{<=} everywhere addresses Goal~2 but \textbf{not} Goal~1.
+\end{frame}
+
+% ---- Slide 10 ----
+\begin{frame}{Goal~2: Does \texttt{<=} Prevent Single-Node Dominance?}
+  With \texttt{<=} node constraints \emph{and} the regional sum equality, the math forces distribution.
+
+  \vspace{0.5em}
+  Key identity: $\displaystyle\sum_n \text{pct}[n] = 1.0$ \quad (shares sum to 100\%)
+
+  \vspace{0.3em}
+  Therefore, if every node is bounded above by $\text{pct}[n] \cdot R$ (where $R$ is the regional total) and the sum of all node injections must equal $R$:
+  \[
+    \sum_n \text{node\_injection}[n] = R \;\leq\; \sum_n \text{pct}[n] \cdot R = R
+  \]
+
+  The constraint is tight: the optimizer \textbf{cannot put everything in one node} because that node's cap is only $\text{pct}[n] \cdot R < R$. Gas must spread across multiple nodes.
+
+  \vspace{0.3em}
+  \begin{example}{East region in practice}
+    With \texttt{<=}: PA fills to 43\%, then OH to 22\%, then WV to 18\%. The remaining 17\% has nowhere to go except NY (13\%) and VA/MD (4\%). Distribution is \emph{forced by the cap math}, not by explicit minimum floors.
+  \end{example}
+\end{frame}
+
+% ---- Slide 11 ----
+\begin{frame}{Goal~1: Cross-Region Balance Requires a Stronger Signal}
+  Making node constraints \texttt{<=} everywhere gives flexibility within regions, but \textbf{regional allocation is still decided at the layer above}:
+
+  \vspace{0.3em}
+  \begin{center}
+  \begin{tabular}{cl}
+    Layer & Control \\
+    \midrule
+    \textbf{Regional split} & $\underbrace{\$0.10/\text{mmbtu penalty}}_{\text{too weak}}$ + routing cost difference \\[0.5em]
+    Node split within region & \texttt{<=} cap (effective once region gets gas) \\
+  \end{tabular}
+  \end{center}
+
+  \vspace{0.4em}
+  As long as routing gas to midwest is \$0.20--0.40/mmbtu more expensive than routing it east, and the penalty for undershooting the midwest target is only \$0.10/mmbtu, the optimizer pays the penalty and routes everything east --- regardless of what the node constraint type is.
+
+  \vspace{0.3em}
+  \begin{alertblock}{The gap}
+    \textbf{Routing cost to midwest} $\approx$ \$0.20--0.40/mmbtu extra $>$ \textbf{Penalty} = \$0.10/mmbtu \\
+    Until this gap closes, no node-level change will produce cross-region balance.
+  \end{alertblock}
+\end{frame}
+
+%% ============================================================
+%% PART V: WHAT THE FIX NEEDS
+%% ============================================================
+
+\section{Fix Strategy}
+
+% ---- Slide 12 ----
+\begin{frame}{What Is Actually Needed}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \textbf{Fix~B --- Relax midwest \texttt{==} to \texttt{<=}}\\[0.3em]
+      File: \texttt{v14\_gas\_model\_dev\_midwest\_relax.py}\\
+      Change line~614: \texttt{==} $\to$ \texttt{<=}
+
+      \vspace{0.5em}
+      \textcolor{okgreen}{Achieves Goal~2} --- removes all-or-nothing behavior; midwest nodes can now inject selectively rather than all at fixed proportions.
+
+      \vspace{0.3em}
+      \textcolor{alertred}{Does not achieve Goal~1} --- routing cost still dominates. Midwest injection may still be zero.
+
+    \column{0.48\textwidth}
+      \textbf{Fix~A --- Raise midwest penalty}\\[0.3em]
+      Patch \texttt{.dat} file: \texttt{region\_storage\_inject\_penalty\_cost} for midwest from \$0.10 to \$1.0--5.0/mmbtu.
+
+      \vspace{0.5em}
+      \textcolor{okgreen}{Achieves Goal~1} --- penalty now exceeds routing cost; midwest becomes economically attractive.
+
+      \vspace{0.3em}
+      \textcolor{alertred}{Does not fix Goal~2 alone} --- a higher penalty with \texttt{==} nodes still creates all-or-nothing behavior.
+  \end{columns}
+
+  \vspace{0.8em}
+  \begin{block}{Required combination}
+    \textbf{Fix~B + Fix~A together}: relax \texttt{==} to \texttt{<=} \emph{and} raise the penalty.
+    Fix~B alone enables midwest as an option; Fix~A alone gives the model a reason to use it.
+    Neither is sufficient without the other.
+  \end{block}
+\end{frame}
+
+% ---- Slide 13 ----
+\begin{frame}{Summary: Goal, Mechanism, Fix}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{p{3.5cm}p{3.5cm}p{3.5cm}p{2.5cm}}
+      \toprule
+      \textbf{Goal} & \textbf{Current failure} & \textbf{Fix} & \textbf{Sufficient alone?} \\
+      \midrule
+      Cross-region balance (Goal~1) & \$0.10/mmbtu penalty $<$ routing cost difference & Raise midwest penalty to \$1--5/mmbtu (Fix~A) & \alert{No --- needs Fix~B} \\[0.5em]
+      Within-region distribution (Goal~2) & Midwest \texttt{==} creates all-or-nothing & Change midwest \texttt{==} to \texttt{<=} (Fix~B) & \alert{No --- needs Fix~A} \\[0.5em]
+      Both together & Both above & Fix~B + Fix~A & \textcolor{okgreen}{\textbf{Yes}} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \vspace{0.5em}
+  \textbf{Recommended testing order:}
+  \begin{enumerate}
+    \item Apply Fix~A only (patch \texttt{.dat}, no model change) --- does midwest start injecting?
+    \item Apply Fix~B only (new model file) --- does relaxing proportionality alone help?
+    \item Fix~B + Fix~A together --- most likely effective combination
+    \item Add minimum floor constraint (Fix~C) if B+A still insufficient
+  \end{enumerate}
+\end{frame}
+
+\end{document}
