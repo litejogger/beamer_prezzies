@@ -56,40 +56,39 @@
 
 % ---- Slide 2: What Is Linux? ----
 \begin{frame}{What Is Linux?}
-  \begin{columns}[T]
-    \column{0.52\textwidth}
-      {\small The \textbf{kernel} is the core of the operating system ---
-      the layer between hardware and your programs.}
-      \vspace{0.2em}
-      \begin{itemize}\small
-        \item Manages CPU scheduling, memory, storage, networking, and I/O
-        \item Every process running on the cluster goes through it
-        \item You interact with it through a \textbf{shell} (bash)
-      \end{itemize}
-      \vspace{0.2em}
-      \begin{block}{The software stack}
-        \small\textbf{Hardware} $\to$ \textbf{Linux Kernel} $\to$ \textbf{Bash Shell} $\to$ \textbf{Your Code}
-      \end{block}
+  The \textbf{kernel} is the core of the operating system ---
+  the layer between hardware and your programs.
+  \vspace{0.4em}
+  \begin{itemize}
+    \item Manages CPU scheduling, memory, storage, networking, and I/O
+    \item Every process running on the cluster goes through it
+    \item You interact with it through a \textbf{shell} (bash)
+  \end{itemize}
+  \vspace{0.4em}
+  \begin{block}{The software stack}
+    \textbf{Hardware} $\to$ \textbf{Linux Kernel} $\to$ \textbf{Bash Shell} $\to$ \textbf{Your Code}
+  \end{block}
+\end{frame}
 
-    \column{0.44\textwidth}
-      \begin{block}{On Henry2}
-        \small When you SSH into the cluster, you land in a bash shell.
-        Commands you type go to the kernel, which runs them on the hardware.
-      \end{block}
-      \vspace{0.2em}
-      \begin{itemize}\small
-        \item \textbf{Linux} = the kernel + surrounding tools
-        \item \textbf{Bash} = the shell you type commands into
-        \item \textbf{LSF} = the job scheduler that sits on top
-        \item \textbf{conda} = environment manager
-      \end{itemize}
-  \end{columns}
+% ---- Slide 3: Key Terms ----
+\begin{frame}{Key Terms}
+  \begin{block}{On Henry2}
+    When you SSH into the cluster, you land in a bash shell.
+    Commands you type go to the kernel, which runs them on the hardware.
+  \end{block}
+  \vspace{0.5em}
+  \begin{itemize}
+    \item \textbf{Linux} = the kernel + surrounding tools
+    \item \textbf{Bash} = the shell you type commands into
+    \item \textbf{LSF} = the job scheduler that sits on top
+    \item \textbf{conda} = environment manager
+  \end{itemize}
 \end{frame}
 
 % ---- Slide 3: Why Learn the Shell? ----
 \begin{frame}{Why Learn the Shell Instead of a UI?}
   Some clusters offer a web portal or file browser --- but working directly in the shell is worth the learning curve:
-  \vspace{0.3em}
+  \vspace{-0.1em}
   \begin{itemize}
     \item \textbf{Speed} --- typing \texttt{cd scripts/ \&\& python run.py} is faster than clicking through folders in a file manager
     \item \textbf{Automation} --- a UI requires a human every time; a bash script runs 60 model jobs while you sleep
@@ -97,10 +96,10 @@
     \item \textbf{Reproducibility} --- a script is a record of exactly what you ran; clicks are not
     \item \textbf{Power} --- chaining commands (\texttt{|}, \texttt{\&\&}, loops) lets you do in one line what takes dozens of UI steps
   \end{itemize}
-  \vspace{0.3em}
+  \vspace{-0.1em}
   \begin{block}{The payoff}
-    The shell feels awkward for the first week. After that, you will not want to go back.
-    Everything you automate now compounds --- the same scripts that run one job can run a thousand.
+    The shell has a steep learning curve initially. After that, you will not want to go back. \\
+    It's a game changer for productivity and opens up the full power of the cluster.
   \end{block}
 \end{frame}
 
@@ -116,7 +115,7 @@
     \centering
     \includegraphics[width=0.82\linewidth]{basic_hpc_schematic.png}
   \end{figure}
-  \vspace{-0.5em}
+  \vspace{-0.7em}
   {\small You \textbf{SSH} into the \textbf{login node} from your laptop.
   From there, you submit jobs via \textbf{LSF} --- the scheduler dispatches them to \textbf{compute nodes}.
   Both the login node and compute nodes read and write to the same shared \textbf{storage}.}
@@ -203,7 +202,7 @@
             \texttt{chmod +x script.sh}
         \end{enumerate}
       \end{block}
-      \vspace{0.4em}
+      \vspace{0.1em}
       \begin{block}{Three ways to run}
         \begin{itemize}
           \item \texttt{./script.sh} \quad subprocess
@@ -235,6 +234,8 @@ done
   \end{columns}
 \end{frame}
 
+
+
 %% ============================================================
 %% PART IV: HPC WITH LSF
 %% ============================================================
@@ -242,11 +243,11 @@ done
 \section{HPC with LSF}
 
 % ---- Slide 6: LSF Submission Script ----
-\begin{frame}[fragile]{LSF Job Submission with \texttt{bsub}}
-  \begin{lstlisting}[language=bash]
-bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0.0"
+\begin{frame}[fragile]{One-Line LSF Job Submission with \texttt{bsub}}
+  \begin{lstlisting}[language=bash, basicstyle=\ttfamily\scriptsize]
+bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py"
   \end{lstlisting}
-  \vspace{0.2em}
+  % \vspace{0.2em}
   \begin{table}
     \centering
     \small
@@ -261,10 +262,11 @@ bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0
       \bottomrule
     \end{tabular}
   \end{table}
-  \vspace{0.3em}
+  \vspace{1em}
   \begin{columns}[T]
     \column{0.48\textwidth}
-      \textbf{Monitor your jobs:}
+    \vspace{0.2em}
+      \textbf{How to Monitor your jobs:}
       \begin{itemize}
         \item \texttt{bjobs -r} \quad\quad running jobs
         \item \texttt{bjobs -d} \quad\quad recently finished
@@ -279,11 +281,34 @@ bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0
   \end{columns}
 \end{frame}
 
+% ---- Slide: Putting It Together ----
+\begin{frame}[fragile]{Putting It Together: A Single Job Submission}
+  \begin{lstlisting}[language=bash]
+#!/bin/bash
+
+# activate the group conda environment
+conda activate /usr/local/usrapps/infews/group_env_111425
+
+# submit one model run to the cluster
+bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py"
+
+echo "Job submitted"
+  \end{lstlisting}
+  \vspace{0.3em}
+  \begin{block}{What this does}
+    \begin{enumerate}\small
+      \item Activates the conda environment so Python and all packages are available
+      \item Hands the job to LSF --- the scheduler picks a free compute node and runs it
+      \item Stdout goes to \texttt{out.\$JOBID}, stderr to \texttt{err.\$JOBID} --- check these if it fails
+    \end{enumerate}
+  \end{block}
+\end{frame}
+
 %% ============================================================
 %% PART V: RESOURCES
 %% ============================================================
 
-\section{Resources}
+\section{Additional Resources: YouTube Series to get started}
 
 % ---- Slide 7: QR Code ----
 \begin{frame}{Get Up and Running: YouTube Series}
