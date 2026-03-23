@@ -1,0 +1,26 @@
+# Compiled output
+*.pdf
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+
+# Beamer-specific
+*.nav
+*.snm
+*.vrb
+
+# Bibliography
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+
+# Editor
+.vscode/

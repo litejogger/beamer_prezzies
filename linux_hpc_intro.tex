@@ -21,7 +21,7 @@
 
 \setbeamercolor{alerted text}{fg=alertred}
 
-\graphicspath{{figs/}}
+\graphicspath{{figs/}{image_files/}}
 
 % Code listing style
 \lstset{
@@ -58,26 +58,26 @@
 \begin{frame}{What Is Linux?}
   \begin{columns}[T]
     \column{0.52\textwidth}
-      The \textbf{kernel} is the core of the operating system ---
-      the layer between hardware and your programs.
-      \vspace{0.4em}
-      \begin{itemize}
+      {\small The \textbf{kernel} is the core of the operating system ---
+      the layer between hardware and your programs.}
+      \vspace{0.2em}
+      \begin{itemize}\small
         \item Manages CPU scheduling, memory, storage, networking, and I/O
         \item Every process running on the cluster goes through it
         \item You interact with it through a \textbf{shell} (bash)
       \end{itemize}
-      \vspace{0.4em}
+      \vspace{0.2em}
       \begin{block}{The software stack}
-        \textbf{Hardware} $\to$ \textbf{Linux Kernel} $\to$ \textbf{Bash Shell} $\to$ \textbf{Your Code}
+        \small\textbf{Hardware} $\to$ \textbf{Linux Kernel} $\to$ \textbf{Bash Shell} $\to$ \textbf{Your Code}
       \end{block}
 
     \column{0.44\textwidth}
       \begin{block}{On Henry2}
-        When you SSH into the cluster, you land in a bash shell.
+        \small When you SSH into the cluster, you land in a bash shell.
         Commands you type go to the kernel, which runs them on the hardware.
       \end{block}
-      \vspace{0.5em}
-      \begin{itemize}
+      \vspace{0.2em}
+      \begin{itemize}\small
         \item \textbf{Linux} = the kernel + surrounding tools
         \item \textbf{Bash} = the shell you type commands into
         \item \textbf{LSF} = the job scheduler that sits on top
@@ -104,7 +104,37 @@
   \end{block}
 \end{frame}
 
-% ---- Slide 4: Why Linux for HPC ----
+%% ============================================================
+%% PART II: BASIC SYSTEM REPRESENTATION
+%% ============================================================
+
+\section{Basic System Representation}
+
+% ---- Slide 4: How the Cluster Is Organized ----
+\begin{frame}{How the Cluster Is Organized}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.82\linewidth]{basic_hpc_schematic.png}
+  \end{figure}
+  \vspace{-0.5em}
+  {\small You \textbf{SSH} into the \textbf{login node} from your laptop.
+  From there, you submit jobs via \textbf{LSF} --- the scheduler dispatches them to \textbf{compute nodes}.
+  Both the login node and compute nodes read and write to the same shared \textbf{storage}.}
+\end{frame}
+
+% ---- Slide 5: Storage Directories ----
+\begin{frame}{Storage Directories}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.76\linewidth]{hpc_schematic_with_share.png}
+  \end{figure}
+  \vspace{-0.5em}
+  {\small \textbf{\$HOME} --- your home directory; backed up automatically.
+  \textbf{share} (\texttt{/share/\$GROUP/\$USER/}) --- scratch space for large run outputs; \alert{not backed up}.
+  \textbf{usrapps} --- shared software and conda environments for your group.}
+\end{frame}
+
+% ---- Slide 6: Why Linux for HPC ----
 \begin{frame}{Why Linux for HPC}
   \begin{itemize}
     \item \textbf{Free and open source} --- every HPC cluster in the world runs Linux
@@ -133,7 +163,8 @@
 \begin{frame}{Commands You Will Use Every Day}
   \begin{table}
     \centering
-    \footnotesize
+    \scriptsize
+    \renewcommand{\arraystretch}{1.15}
     \begin{tabular}{lll}
       \toprule
       \textbf{Command} & \textbf{What it does} & \textbf{Example} \\
@@ -149,8 +180,8 @@
       \bottomrule
     \end{tabular}
   \end{table}
-  \vspace{0.4em}
-  {\footnotesize Append \texttt{--help} to any command for usage info: \quad \texttt{ls --help} \quad \texttt{cp --help}}
+  \vspace{0.3em}
+  {\scriptsize Append \texttt{--help} to any command for usage info: \quad \texttt{ls --help} \quad \texttt{cp --help}}
 \end{frame}
 
 %% ============================================================
