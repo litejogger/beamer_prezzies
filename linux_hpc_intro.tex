@@ -1,0 +1,370 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+\usetheme{metropolis}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{appendixnumberbeamer}
+\usepackage{listings}
+\usepackage{qrcode}
+
+% Custom colors
+\definecolor{alertred}{RGB}{204, 36, 29}
+\definecolor{okgreen}{RGB}{40, 140, 40}
+\definecolor{noteblue}{RGB}{30, 90, 160}
+\definecolor{codebg}{RGB}{242, 242, 242}
+
+\setbeamercolor{alerted text}{fg=alertred}
+
+\graphicspath{{figs/}}
+
+% Code listing style
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=none,
+  breaklines=true,
+  showstringspaces=false,
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em,
+  aboveskip=0.4em,
+  belowskip=0.2em,
+}
+
+\title{Linux \& HPC Basics}
+\subtitle{Getting Up and Running on the Cluster}
+\author{Caleb Sy}
+\date{March 2026}
+\institute{PhD Research Briefing}
+
+\begin{document}
+
+\maketitle
+
+%% ============================================================
+%% PART I: THE LINUX KERNEL
+%% ============================================================
+
+\section{The Linux Kernel}
+
+% ---- Slide 2: What Is Linux? ----
+\begin{frame}{What Is Linux?}
+  \begin{columns}[T]
+    \column{0.52\textwidth}
+      The \textbf{kernel} is the core of the operating system ---
+      the layer between hardware and your programs.
+      \vspace{0.4em}
+      \begin{itemize}
+        \item Manages CPU scheduling, memory, storage, networking, and I/O
+        \item Every process running on the cluster goes through it
+        \item You interact with it through a \textbf{shell} (bash)
+      \end{itemize}
+      \vspace{0.4em}
+      \begin{block}{The software stack}
+        \textbf{Hardware} $\to$ \textbf{Linux Kernel} $\to$ \textbf{Bash Shell} $\to$ \textbf{Your Code}
+      \end{block}
+
+    \column{0.44\textwidth}
+      \begin{block}{On Henry2}
+        When you SSH into the cluster, you land in a bash shell.
+        Commands you type go to the kernel, which runs them on the hardware.
+      \end{block}
+      \vspace{0.5em}
+      \begin{itemize}
+        \item \textbf{Linux} = the kernel + surrounding tools
+        \item \textbf{Bash} = the shell you type commands into
+        \item \textbf{LSF} = the job scheduler that sits on top
+        \item \textbf{conda} = environment manager
+      \end{itemize}
+  \end{columns}
+\end{frame}
+
+% ---- Slide 3: Why Linux for HPC ----
+\begin{frame}{Why Linux for HPC}
+  \begin{itemize}
+    \item \textbf{Free and open source} --- every HPC cluster in the world runs Linux
+    \item \textbf{Stable under heavy load} --- built for long-running, multi-user environments
+    \item \textbf{Shell scripting is built in} --- automate repetitive tasks with a text file
+    \item \textbf{Environment management} --- \texttt{conda activate}, \texttt{module load} work natively
+    \item \textbf{Remote access} --- SSH from any machine, no GUI required
+  \end{itemize}
+  \vspace{0.5em}
+  \begin{alertblock}{Windows paths do not work here}
+    \texttt{C:\textbackslash{}Users\textbackslash{}calisy\textbackslash{}...} is a Windows path.
+    On Linux everything uses forward slashes and starts from \texttt{/}.\\
+    Your home: \texttt{\$HOME} \quad Scratch storage: \texttt{/share/\$GROUP/\$USER/}
+  \end{alertblock}
+\end{frame}
+
+%% ============================================================
+%% PART II: BASIC COMMANDS
+%% ============================================================
+
+\section{Basic Commands}
+
+% ---- Slide 4: Commands Reference ----
+\begin{frame}{Commands You Will Use Every Day}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Command} & \textbf{What it does} & \textbf{Example} \\
+      \midrule
+      \texttt{ls}   & List files in a directory                    & \texttt{ls -lh} \\
+      \texttt{cd}   & Change directory                              & \texttt{cd scripts/} \\
+      \texttt{cp}   & Copy a file or directory                      & \texttt{cp a.py b.py} \\
+      \texttt{mv}   & Move or rename a file                         & \texttt{mv old.py new.py} \\
+      \texttt{echo} & Print text or a variable to the terminal      & \texttt{echo \$MY\_VAR} \\
+      \texttt{cat}  & Print a file's full contents to screen        & \texttt{cat out.txt} \\
+      \texttt{less} & Scroll through a file (press \texttt{q} to quit) & \texttt{less log.txt} \\
+      \texttt{nano} & Simple in-terminal text editor                & \texttt{nano script.sh} \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \vspace{0.4em}
+  {\small Append \texttt{--help} to any command for usage info: \quad \texttt{ls --help} \quad \texttt{cp --help}}
+\end{frame}
+
+%% ============================================================
+%% PART III: BASH SCRIPTING
+%% ============================================================
+
+\section{Bash Scripting}
+
+% ---- Slide 5: Anatomy of a Bash Script ----
+\begin{frame}[fragile]{Anatomy of a Bash Script}
+  \begin{columns}[T]
+    \column{0.54\textwidth}
+      \begin{lstlisting}[language=bash]
+#!/bin/bash
+# this is a comment
+
+# source a config file (imports its variables)
+. ./experiment_grid_params.sh
+
+# variable assignment (no spaces around =)
+MY_VAR="hello world"
+
+# print a variable
+echo $MY_VAR
+
+# loop over an array
+for val in "${my_array[@]}"; do
+    echo "Running: $val"
+    python run_model.py $val
+done
+      \end{lstlisting}
+
+    \column{0.42\textwidth}
+      \begin{block}{Key rules}
+        \begin{itemize}
+          \item \texttt{\#!/bin/bash} must be line~1
+          \item No spaces around \texttt{=} in assignments
+          \item Use \texttt{\$VAR} or \texttt{\$\{VAR\}} to expand a variable
+          \item Make executable before first run:\\
+            \texttt{chmod +x script.sh}
+        \end{itemize}
+      \end{block}
+      \vspace{0.4em}
+      \begin{block}{Three ways to run}
+        \texttt{./script.sh} \hfill subprocess\\
+        \texttt{bash script.sh} \hfill same\\
+        \texttt{. ./script.sh} \hfill \textit{source} (imports variables into current shell)
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% ---- Slide 6: File Naming Conventions ----
+\begin{frame}{File Naming Conventions}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Pattern} & \textbf{Example} & \textbf{Purpose} \\
+      \midrule
+      \texttt{verb\_noun.sh}          & \texttt{run\_experiment.sh}            & Action scripts --- run these to do things \\
+      \texttt{check\_*.sh}            & \texttt{check\_job\_status.sh}         & Monitoring and utility scripts \\
+      \texttt{*\_params.sh}           & \texttt{experiment\_grid\_params.sh}   & Config files sourced by other scripts \\
+      \texttt{*\_log\_MMDD\_HHMM.txt} & \texttt{failed\_results\_gather\_log\_0226\_1351.txt} & Timestamped error logs \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \vspace{0.5em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{alertblock}{Never use spaces in filenames}
+        \texttt{my file.sh} breaks shell scripts.\\
+        \texttt{my\_file.sh} always works.\\
+        Use underscores everywhere on HPC.
+      \end{alertblock}
+
+    \column{0.48\textwidth}
+      \begin{block}{Case convention}
+        Files and directories: \texttt{lowercase\_with\_underscores}\\
+        Environment variables and constants: \texttt{UPPERCASE}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+%% PART IV: RUNNING PYTHON
+%% ============================================================
+
+\section{Running Python}
+
+% ---- Slide 7: Calling Python ----
+\begin{frame}[fragile]{Calling Python from the Command Line and Bash}
+  \begin{columns}[T]
+    \column{0.47\textwidth}
+      \textbf{From the command line:}
+      \begin{lstlisting}[language=bash]
+# basic run
+python script.py
+
+# with positional arguments
+python script.py arg1 arg2
+
+# as used in the model
+python v13_calibration_wrapper.py \
+    372 0.0
+      \end{lstlisting}
+      \vspace{0.3em}
+      {\small Read args in the script with\\
+      \texttt{import sys}\\
+      \texttt{sys.argv[1]}, \texttt{sys.argv[2]}, \ldots}
+
+    \column{0.49\textwidth}
+      \textbf{From inside a bash script:}
+      \begin{lstlisting}[language=bash]
+adjustment=0.98
+qps_shift=0.1
+storage_shift=0.0
+
+python v13_calibration_wrapper.py \
+    ${adjustment} \
+    ${qps_shift} \
+    ${storage_shift}
+      \end{lstlisting}
+      \vspace{0.3em}
+      {\small \texttt{\$\{...\}} expands to the variable's value at
+      run time --- this is how the calibration grid iterates over
+      all parameter combinations.}
+  \end{columns}
+  \vspace{0.3em}
+  \begin{block}{This is exactly what \texttt{run\_experiment.sh} does}
+    It loops over all \texttt{(adjustment, qps\_shift, storage\_shift)} combinations
+    and calls \texttt{bsub "python v13\_calibration\_wrapper.py \$\{...\}"} for each one.
+  \end{block}
+\end{frame}
+
+%% ============================================================
+%% PART V: HPC WITH LSF
+%% ============================================================
+
+\section{HPC with LSF}
+
+% ---- Slide 8: LSF Submission Script ----
+\begin{frame}[fragile]{LSF Job Submission with \texttt{bsub}}
+  \begin{lstlisting}[language=bash]
+bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0.0"
+  \end{lstlisting}
+  \vspace{0.2em}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lll}
+      \toprule
+      \textbf{Flag} & \textbf{Meaning} & \textbf{Typical value} \\
+      \midrule
+      \texttt{-W 30}      & Wall time limit (minutes)       & \texttt{30} for model run; \texttt{5} for data setup \\
+      \texttt{-n 1}       & Number of CPU cores             & \texttt{1} (model is single-threaded) \\
+      \texttt{-o out.\%J} & Write stdout to this file       & \texttt{\%J} expands to the LSF job ID \\
+      \texttt{-e err.\%J} & Write stderr to this file       & Read this first when a job fails \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+  \vspace{0.3em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \textbf{Monitor your jobs:}
+      \begin{itemize}
+        \item \texttt{bjobs -r} \quad\quad running jobs
+        \item \texttt{bjobs -d} \quad\quad recently finished
+        \item \texttt{bhist -l \$JOBID} \quad full history
+      \end{itemize}
+    \column{0.48\textwidth}
+      \begin{block}{If a job fails}
+        Check \texttt{err.\$JOBID} first.
+        Common causes: wall time exceeded (\texttt{-W} too short),
+        wrong conda env, or a missing input file.
+      \end{block}
+  \end{columns}
+\end{frame}
+
+% ---- Slide 9: Calibration File Structure ----
+\begin{frame}[fragile]{Calibration Experiment File Structure}
+  \begin{columns}[T]
+    \column{0.46\textwidth}
+      \textbf{Script directory} (in the repo):
+      \begin{lstlisting}
+v13_run_scripts/
+  experiment_grid_params.sh   <- 1. edit params
+  folder_setup.sh             <- 2. create dirs
+  run_data_setup.sh           <- 3. build .dat files
+  run_experiment.sh           <- 4. submit model jobs
+  gather_run_results.sh       <- 5. collect outputs
+  copy_to_research_storage.sh <- 6. archive
+  check_job_status.sh            (job monitor utility)
+      \end{lstlisting}
+
+    \column{0.50\textwidth}
+      \textbf{Run directories on scratch} (created by step~2):
+      \begin{lstlisting}
+/share/$GROUP/$USER/
+  prod_experiment/
+    set_of_15_prod_adjustments/
+      prodshift_0.970_qpsshift_0.0_.../
+        model_data_inputs_5-2-25/
+        pickles/
+        v13_calibration_wrapper.py
+        v13_run_datasetup_...py
+        ...
+      prodshift_0.971_qpsshift_0.0_.../
+      ...  (one directory per parameter combo)
+      \end{lstlisting}
+  \end{columns}
+  \vspace{0.3em}
+  \begin{block}{Run scripts 1 through 6 in order}
+    Each script sources \texttt{experiment\_grid\_params.sh} first,
+    then loops over all parameter combinations and submits \texttt{bsub} jobs.
+  \end{block}
+\end{frame}
+
+%% ============================================================
+%% PART VI: RESOURCES
+%% ============================================================
+
+\section{Resources}
+
+% ---- Slide 10: QR Code ----
+\begin{frame}{Get Up and Running: YouTube Series}
+  \begin{center}
+    \vspace{0.2em}
+    \qrcode[height=4.2cm]{https://www.youtube.com/watch?v=YwqpWSOWHNM\&list=PLskHZ4tWojE1NZKZiF_XRVztGAJatUKFt\&index=2}
+
+    \vspace{0.5em}
+    {\large \textbf{Linux Command Line for Beginners}}
+
+    \vspace{0.3em}
+    {\small Full playlist --- start at video~2 for the fastest path to being productive}
+
+    \vspace{0.3em}
+    {\footnotesize \texttt{https://www.youtube.com/watch?v=YwqpWSOWHNM}}
+  \end{center}
+\end{frame}
+
+\end{document}
