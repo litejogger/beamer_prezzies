@@ -8,6 +8,11 @@
 \usepackage{listings}
 \usepackage{qrcode}
 
+% Arial font (Helvetica equivalent for pdflatex)
+\usepackage[scaled]{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[T1]{fontenc}
+
 % Custom colors
 \definecolor{alertred}{RGB}{204, 36, 29}
 \definecolor{okgreen}{RGB}{40, 140, 40}
@@ -93,8 +98,10 @@
   \vspace{0.5em}
   \begin{alertblock}{Windows paths do not work here}
     \texttt{C:\textbackslash{}Users\textbackslash{}calisy\textbackslash{}...} is a Windows path.
-    On Linux everything uses forward slashes and starts from \texttt{/}.\\
-    Your home: \texttt{\$HOME} \quad Scratch storage: \texttt{/share/\$GROUP/\$USER/}
+    On Linux everything uses forward slashes and starts from \texttt{/}.\\[0.3em]
+    \texttt{\$HOME}, \texttt{\$GROUP}, and \texttt{\$USER} are \textbf{environment variables} ---
+    shell variables defined in your \texttt{.bashrc} (the config file that runs every time you log in).\\[0.2em]
+    \texttt{\$HOME} = your home directory \quad \texttt{/share/\$GROUP/\$USER/} = scratch storage
   \end{alertblock}
 \end{frame}
 
@@ -108,24 +115,24 @@
 \begin{frame}{Commands You Will Use Every Day}
   \begin{table}
     \centering
-    \small
+    \footnotesize
     \begin{tabular}{lll}
       \toprule
       \textbf{Command} & \textbf{What it does} & \textbf{Example} \\
       \midrule
-      \texttt{ls}   & List files in a directory                    & \texttt{ls -lh} \\
-      \texttt{cd}   & Change directory                              & \texttt{cd scripts/} \\
-      \texttt{cp}   & Copy a file or directory                      & \texttt{cp a.py b.py} \\
-      \texttt{mv}   & Move or rename a file                         & \texttt{mv old.py new.py} \\
-      \texttt{echo} & Print text or a variable to the terminal      & \texttt{echo \$MY\_VAR} \\
-      \texttt{cat}  & Print a file's full contents to screen        & \texttt{cat out.txt} \\
-      \texttt{less} & Scroll through a file (press \texttt{q} to quit) & \texttt{less log.txt} \\
-      \texttt{nano} & Simple in-terminal text editor                & \texttt{nano script.sh} \\
+      \texttt{ls}   & List files in a directory          & \texttt{ls -lh} \\
+      \texttt{cd}   & Change directory                   & \texttt{cd scripts/} \\
+      \texttt{cp}   & Copy a file or directory           & \texttt{cp a.py b.py} \\
+      \texttt{mv}   & Move or rename a file              & \texttt{mv old.py new.py} \\
+      \texttt{echo} & Print text or a variable           & \texttt{echo \$MY\_VAR} \\
+      \texttt{cat}  & Print file contents to screen      & \texttt{cat out.txt} \\
+      \texttt{less} & Page through a file (\texttt{q} to quit) & \texttt{less log.txt} \\
+      \texttt{nano} & In-terminal text editor            & \texttt{nano script.sh} \\
       \bottomrule
     \end{tabular}
   \end{table}
   \vspace{0.4em}
-  {\small Append \texttt{--help} to any command for usage info: \quad \texttt{ls --help} \quad \texttt{cp --help}}
+  {\footnotesize Append \texttt{--help} to any command for usage info: \quad \texttt{ls --help} \quad \texttt{cp --help}}
 \end{frame}
 
 %% ============================================================
@@ -137,6 +144,25 @@
 % ---- Slide 5: Anatomy of a Bash Script ----
 \begin{frame}[fragile]{Anatomy of a Bash Script}
   \begin{columns}[T]
+    \column{0.42\textwidth}
+      \begin{block}{Key rules}
+        \begin{enumerate}
+          \item \texttt{\#!/bin/bash} must be line~1
+          \item No spaces around \texttt{=} in assignments
+          \item Use \texttt{\$VAR} or \texttt{\$\{VAR\}} to expand a variable
+          \item Make executable before first run:\\
+            \texttt{chmod +x script.sh}
+        \end{enumerate}
+      \end{block}
+      \vspace{0.4em}
+      \begin{block}{Three ways to run}
+        \begin{itemize}
+          \item \texttt{./script.sh} \quad subprocess
+          \item \texttt{bash script.sh} \quad same
+          \item \texttt{. ./script.sh} \quad \textit{source} --- runs in current shell and imports its variables
+        \end{itemize}
+      \end{block}
+
     \column{0.54\textwidth}
       \begin{lstlisting}[language=bash]
 #!/bin/bash
@@ -157,117 +183,16 @@ for val in "${my_array[@]}"; do
     python run_model.py $val
 done
       \end{lstlisting}
-
-    \column{0.42\textwidth}
-      \begin{block}{Key rules}
-        \begin{itemize}
-          \item \texttt{\#!/bin/bash} must be line~1
-          \item No spaces around \texttt{=} in assignments
-          \item Use \texttt{\$VAR} or \texttt{\$\{VAR\}} to expand a variable
-          \item Make executable before first run:\\
-            \texttt{chmod +x script.sh}
-        \end{itemize}
-      \end{block}
-      \vspace{0.4em}
-      \begin{block}{Three ways to run}
-        \texttt{./script.sh} \hfill subprocess\\
-        \texttt{bash script.sh} \hfill same\\
-        \texttt{. ./script.sh} \hfill \textit{source} (imports variables into current shell)
-      \end{block}
-  \end{columns}
-\end{frame}
-
-% ---- Slide 6: File Naming Conventions ----
-\begin{frame}{File Naming Conventions}
-  \begin{table}
-    \centering
-    \small
-    \begin{tabular}{lll}
-      \toprule
-      \textbf{Pattern} & \textbf{Example} & \textbf{Purpose} \\
-      \midrule
-      \texttt{verb\_noun.sh}          & \texttt{run\_experiment.sh}            & Action scripts --- run these to do things \\
-      \texttt{check\_*.sh}            & \texttt{check\_job\_status.sh}         & Monitoring and utility scripts \\
-      \texttt{*\_params.sh}           & \texttt{experiment\_grid\_params.sh}   & Config files sourced by other scripts \\
-      \texttt{*\_log\_MMDD\_HHMM.txt} & \texttt{failed\_results\_gather\_log\_0226\_1351.txt} & Timestamped error logs \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-  \vspace{0.5em}
-  \begin{columns}[T]
-    \column{0.48\textwidth}
-      \begin{alertblock}{Never use spaces in filenames}
-        \texttt{my file.sh} breaks shell scripts.\\
-        \texttt{my\_file.sh} always works.\\
-        Use underscores everywhere on HPC.
-      \end{alertblock}
-
-    \column{0.48\textwidth}
-      \begin{block}{Case convention}
-        Files and directories: \texttt{lowercase\_with\_underscores}\\
-        Environment variables and constants: \texttt{UPPERCASE}
-      \end{block}
   \end{columns}
 \end{frame}
 
 %% ============================================================
-%% PART IV: RUNNING PYTHON
-%% ============================================================
-
-\section{Running Python}
-
-% ---- Slide 7: Calling Python ----
-\begin{frame}[fragile]{Calling Python from the Command Line and Bash}
-  \begin{columns}[T]
-    \column{0.47\textwidth}
-      \textbf{From the command line:}
-      \begin{lstlisting}[language=bash]
-# basic run
-python script.py
-
-# with positional arguments
-python script.py arg1 arg2
-
-# as used in the model
-python v13_calibration_wrapper.py \
-    372 0.0
-      \end{lstlisting}
-      \vspace{0.3em}
-      {\small Read args in the script with\\
-      \texttt{import sys}\\
-      \texttt{sys.argv[1]}, \texttt{sys.argv[2]}, \ldots}
-
-    \column{0.49\textwidth}
-      \textbf{From inside a bash script:}
-      \begin{lstlisting}[language=bash]
-adjustment=0.98
-qps_shift=0.1
-storage_shift=0.0
-
-python v13_calibration_wrapper.py \
-    ${adjustment} \
-    ${qps_shift} \
-    ${storage_shift}
-      \end{lstlisting}
-      \vspace{0.3em}
-      {\small \texttt{\$\{...\}} expands to the variable's value at
-      run time --- this is how the calibration grid iterates over
-      all parameter combinations.}
-  \end{columns}
-  \vspace{0.3em}
-  \begin{block}{This is exactly what \texttt{run\_experiment.sh} does}
-    It loops over all \texttt{(adjustment, qps\_shift, storage\_shift)} combinations
-    and calls \texttt{bsub "python v13\_calibration\_wrapper.py \$\{...\}"} for each one.
-  \end{block}
-\end{frame}
-
-%% ============================================================
-%% PART V: HPC WITH LSF
+%% PART IV: HPC WITH LSF
 %% ============================================================
 
 \section{HPC with LSF}
 
-% ---- Slide 8: LSF Submission Script ----
+% ---- Slide 6: LSF Submission Script ----
 \begin{frame}[fragile]{LSF Job Submission with \texttt{bsub}}
   \begin{lstlisting}[language=bash]
 bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0.0"
@@ -305,52 +230,13 @@ bsub -W 30 -n 1 -o "out.%J" -e "err.%J" "python v13_calibration_wrapper.py 372 0
   \end{columns}
 \end{frame}
 
-% ---- Slide 9: Calibration File Structure ----
-\begin{frame}[fragile]{Calibration Experiment File Structure}
-  \begin{columns}[T]
-    \column{0.46\textwidth}
-      \textbf{Script directory} (in the repo):
-      \begin{lstlisting}
-v13_run_scripts/
-  experiment_grid_params.sh   <- 1. edit params
-  folder_setup.sh             <- 2. create dirs
-  run_data_setup.sh           <- 3. build .dat files
-  run_experiment.sh           <- 4. submit model jobs
-  gather_run_results.sh       <- 5. collect outputs
-  copy_to_research_storage.sh <- 6. archive
-  check_job_status.sh            (job monitor utility)
-      \end{lstlisting}
-
-    \column{0.50\textwidth}
-      \textbf{Run directories on scratch} (created by step~2):
-      \begin{lstlisting}
-/share/$GROUP/$USER/
-  prod_experiment/
-    set_of_15_prod_adjustments/
-      prodshift_0.970_qpsshift_0.0_.../
-        model_data_inputs_5-2-25/
-        pickles/
-        v13_calibration_wrapper.py
-        v13_run_datasetup_...py
-        ...
-      prodshift_0.971_qpsshift_0.0_.../
-      ...  (one directory per parameter combo)
-      \end{lstlisting}
-  \end{columns}
-  \vspace{0.3em}
-  \begin{block}{Run scripts 1 through 6 in order}
-    Each script sources \texttt{experiment\_grid\_params.sh} first,
-    then loops over all parameter combinations and submits \texttt{bsub} jobs.
-  \end{block}
-\end{frame}
-
 %% ============================================================
-%% PART VI: RESOURCES
+%% PART V: RESOURCES
 %% ============================================================
 
 \section{Resources}
 
-% ---- Slide 10: QR Code ----
+% ---- Slide 7: QR Code ----
 \begin{frame}{Get Up and Running: YouTube Series}
   \begin{center}
     \vspace{0.2em}
