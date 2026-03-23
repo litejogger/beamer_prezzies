@@ -86,7 +86,25 @@
   \end{columns}
 \end{frame}
 
-% ---- Slide 3: Why Linux for HPC ----
+% ---- Slide 3: Why Learn the Shell? ----
+\begin{frame}{Why Learn the Shell Instead of a UI?}
+  Some clusters offer a web portal or file browser --- but working directly in the shell is worth the learning curve:
+  \vspace{0.3em}
+  \begin{itemize}
+    \item \textbf{Speed} --- typing \texttt{cd scripts/ \&\& python run.py} is faster than clicking through folders in a file manager
+    \item \textbf{Automation} --- a UI requires a human every time; a bash script runs 60 model jobs while you sleep
+    \item \textbf{Remote work} --- SSH + shell works on any connection; web portals are slow or unavailable on poor networks
+    \item \textbf{Reproducibility} --- a script is a record of exactly what you ran; clicks are not
+    \item \textbf{Power} --- chaining commands (\texttt{|}, \texttt{\&\&}, loops) lets you do in one line what takes dozens of UI steps
+  \end{itemize}
+  \vspace{0.3em}
+  \begin{block}{The payoff}
+    The shell feels awkward for the first week. After that, you will not want to go back.
+    Everything you automate now compounds --- the same scripts that run one job can run a thousand.
+  \end{block}
+\end{frame}
+
+% ---- Slide 4: Why Linux for HPC ----
 \begin{frame}{Why Linux for HPC}
   \begin{itemize}
     \item \textbf{Free and open source} --- every HPC cluster in the world runs Linux
