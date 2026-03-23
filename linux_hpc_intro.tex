@@ -49,10 +49,63 @@
 \maketitle
 
 %% ============================================================
-%% PART I: THE LINUX KERNEL
+%% PART I: KNOWING WHEN TO USE HPC OR VCL
 %% ============================================================
 
-\section{The Linux Kernel}
+\section{Knowing When to Use HPC or VCL}
+
+% ---- Slide: HPC vs VCL table ----
+\begin{frame}{HPC Cluster vs.\ Large Linux Machine (VCL)}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{l|l|l}
+      \toprule
+      & \textbf{HPC Cluster (Henry2)} & \textbf{VCL (1\,TB RAM, 176 cores)} \\
+      \midrule
+      Architecture    & Many nodes, each modest           & One machine, massive shared memory \\
+      \midrule
+      Access          & Submit jobs via LSF scheduler     & Interactive login, no queue \\
+      \midrule
+      RAM per job     & Typically 4--64\,GB per node      & Up to 1\,TB in a single process \\
+      \midrule
+      Parallelism     & Across nodes (distributed)        & Within one machine (shared memory) \\
+      \midrule
+      Best for        & Many independent runs             & One large, memory-intensive solve \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+\end{frame}
+
+% ---- Slide: When to use which ----
+\begin{frame}{My Own Rules of Thumb}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+      \begin{block}{Use HPC when\ldots}
+        \begin{itemize}
+          \item Running a \textbf{parameter sweep} --- 100s-1000s of LP/MIP runs at once
+          \item Jobs are \textbf{independent} of each other
+          \item Larger jobs that require more RAM than your local machine or VCL
+          \item You have the time to get familiar with the cluster and its job scheduler
+        \end{itemize}
+      \end{block}
+    \column{0.48\textwidth}
+      \begin{block}{Use VCL when\ldots}
+        \begin{itemize}
+          \item Solving a \textbf{large MILP} --- branch-and-bound trees grow into hundreds of GB
+          \item Problem cannot be decomposed into independent tasks
+          \item You need extra RAM but low setup time and no queue
+        \end{itemize}
+      \end{block}
+  \end{columns}
+\end{frame}
+
+%% ============================================================
+%% PART II: THE LINUX KERNEL
+%% ============================================================
+
+\section{The Basics of Getting Started: The Shell and 
+The Linux Kernel}
 
 % ---- Slide 2: What Is Linux? ----
 \begin{frame}{What Is Linux?}
@@ -70,6 +123,53 @@
   \end{block}
 \end{frame}
 
+% ---- Slide 6: Why Linux for HPC ----
+\begin{frame}{Why Linux for HPC}
+  \begin{itemize}
+    \item \textbf{Free and open source} --- every HPC cluster in the world runs Linux
+    \item \textbf{Stable under heavy load} --- built for long-running, multi-user environments
+    \item \textbf{Shell scripting is built in} --- automate repetitive tasks with a text file
+    \item \textbf{Environment management} --- \texttt{conda activate}, \texttt{module load} work natively
+    \item \textbf{Remote access} --- SSH from any machine, no GUI required
+  \end{itemize}
+  \vspace{0.5em}
+  \begin{alertblock}{Windows paths do not work here}
+    \texttt{C:\textbackslash{}Users\textbackslash{}calisy\textbackslash{}...} is a Windows path.
+    On Linux everything uses forward slashes and starts from \texttt{/}.\\[0.3em]
+    \texttt{\$HOME}, \texttt{\$GROUP}, and \texttt{\$USER} are \textbf{environment variables} ---
+    shell variables defined in your \texttt{.bashrc} (the config file that runs every time you log in).\\[0.2em]
+    \texttt{\$HOME} = your home directory \quad \texttt{/share/\$GROUP/\$USER/} = scratch storage
+  \end{alertblock}
+\end{frame}% ---- Slide: File System Hierarchy ----
+% \begin{frame}{The Linux File System Hierarchy}
+%   \begin{itemize}
+%     \item \texttt{/} --- \textbf{Root}: The top-level directory (like \texttt{C:\textbackslash} but for everything)
+%     \item \texttt{/home/\$USER} --- \textbf{Home}: Your personal space for code and small files
+%     \item \texttt{/share/\$GROUP} --- \textbf{Scratch}: High-performance storage for large datasets
+%     \item \texttt{/usr/local/usrapps} --- \textbf{Apps}: Where shared software and environments live
+%     \item \texttt{..} --- \textbf{Parent}: Move up one directory level
+%     \item \texttt{.} --- \textbf{Current}: The directory you are currently in
+%   \end{itemize}
+%   \vspace{0.5em}
+%   \begin{block}{Pro Tip: Tab Completion}
+%     Start typing a file or directory name and hit \textbf{Tab}. 
+%     Linux will auto-complete it for you. Hit \textbf{Tab} twice to see all possibilities.
+%   \end{block}
+% \end{frame}% ---- Slide: Absolute vs Relative Paths ----
+% \begin{frame}{Absolute vs Relative Paths}
+%   \begin{itemize}
+%     \item \textbf{Absolute path} starts from root: \texttt{/home/\$USER/project/script.py}
+%     \item \textbf{Relative path} starts from current directory: \texttt{./script.py} or \texttt{../data/input.txt}
+%   \end{itemize}
+%   \vspace{0.5em}
+%   \begin{block}{Best Practice}
+%     Use absolute paths in scripts to avoid confusion.
+%     For interactive work, relative paths can be more convenient.
+%   \end{block}
+% \end{frame}
+
+
+
 % ---- Slide 3: Key Terms ----
 \begin{frame}{Key Terms}
   \begin{block}{On Henry2}
@@ -78,10 +178,10 @@
   \end{block}
   \vspace{0.5em}
   \begin{itemize}
+    \item \textbf{SSH (Secure Shell)} = the protocol to securely connect to the cluster from your local computer
     \item \textbf{Linux} = the kernel + surrounding tools
     \item \textbf{Bash} = the shell you type commands into
     \item \textbf{LSF} = the job scheduler that sits on top
-    \item \textbf{conda} = environment manager
   \end{itemize}
 \end{frame}
 
@@ -90,16 +190,14 @@
   Some clusters offer a web portal or file browser --- but working directly in the shell is worth the learning curve:
   \vspace{-0.1em}
   \begin{itemize}
-    \item \textbf{Speed} --- typing \texttt{cd scripts/ \&\& python run.py} is faster than clicking through folders in a file manager
-    \item \textbf{Automation} --- a UI requires a human every time; a bash script runs 60 model jobs while you sleep
-    \item \textbf{Remote work} --- SSH + shell works on any connection; web portals are slow or unavailable on poor networks
+    \item \textbf{Speed} --- scripts run instantly; UIs require clicking through multiple pages
+    \item \textbf{Automation} --- a UI requires a human every time; a bash script runs while you sleep
     \item \textbf{Reproducibility} --- a script is a record of exactly what you ran; clicks are not
     \item \textbf{Power} --- chaining commands (\texttt{|}, \texttt{\&\&}, loops) lets you do in one line what takes dozens of UI steps
   \end{itemize}
   \vspace{-0.1em}
   \begin{block}{The payoff}
-    The shell has a steep learning curve initially. After that, you will not want to go back. \\
-    It's a game changer for productivity and opens up the full power of the cluster.
+    The shell has a steep learning curve initially. After that, you will not want to go back.
   \end{block}
 \end{frame}
 
@@ -107,7 +205,7 @@
 %% PART II: BASIC SYSTEM REPRESENTATION
 %% ============================================================
 
-\section{Basic System Representation}
+\section{Basic Cluster Organization}
 
 % ---- Slide 4: How the Cluster Is Organized ----
 \begin{frame}{How the Cluster Is Organized}
@@ -133,24 +231,7 @@
   \textbf{usrapps} --- shared software and conda environments for your group.}
 \end{frame}
 
-% ---- Slide 6: Why Linux for HPC ----
-\begin{frame}{Why Linux for HPC}
-  \begin{itemize}
-    \item \textbf{Free and open source} --- every HPC cluster in the world runs Linux
-    \item \textbf{Stable under heavy load} --- built for long-running, multi-user environments
-    \item \textbf{Shell scripting is built in} --- automate repetitive tasks with a text file
-    \item \textbf{Environment management} --- \texttt{conda activate}, \texttt{module load} work natively
-    \item \textbf{Remote access} --- SSH from any machine, no GUI required
-  \end{itemize}
-  \vspace{0.5em}
-  \begin{alertblock}{Windows paths do not work here}
-    \texttt{C:\textbackslash{}Users\textbackslash{}calisy\textbackslash{}...} is a Windows path.
-    On Linux everything uses forward slashes and starts from \texttt{/}.\\[0.3em]
-    \texttt{\$HOME}, \texttt{\$GROUP}, and \texttt{\$USER} are \textbf{environment variables} ---
-    shell variables defined in your \texttt{.bashrc} (the config file that runs every time you log in).\\[0.2em]
-    \texttt{\$HOME} = your home directory \quad \texttt{/share/\$GROUP/\$USER/} = scratch storage
-  \end{alertblock}
-\end{frame}
+
 
 %% ============================================================
 %% PART II: BASIC COMMANDS
